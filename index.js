@@ -3,10 +3,18 @@ const app = express()
 const multer = require('multer')
 const cors = require('cors')
 const Jwt = require('jsonwebtoken')
+const cloudinary = require('cloudinary')
 require('dotenv').config()
+const fs = require('fs');
 
 const port = process.env.PORT
 const jwtkey = process.env.JWTKEY 
+
+cloudinary.config({ 
+    cloud_name: process.env.CLOUD_NAME, 
+    api_key: process.env.API_KEY, 
+    api_secret: process.env.API_SECRECT // Click 'View API Keys' above to copy your API secret
+})
 
 const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -25,10 +33,7 @@ const Users = require('./database/user')
 const Products = require('./database/product')
 const SellerUser = require('./database/seller_user');
 const path = require('path');
-// const selling_price = require('./database/filter')
 
-// app.use(express.json())     
-// app.use(cors())
 
 const upload = multer({
     storage:multer.diskStorage({
@@ -44,8 +49,12 @@ const upload = multer({
 
 app.post('/file-upload',upload,async(request,response)=>{
     let body = JSON.parse(request.body.data)
-    console.log('---------------->',body)
-    console.log('--------->',request.file)
+    // console.log('---------------->',body)
+    // console.log('--------->',request.file)
+
+    const cloudinary_image_link =await cloudinary.uploader.upload(request.file.path)
+    console.log('------>',cloudinary_image_link.secure_url)
+    
     const SellingPrice =Math.floor(Number(body.price) - Number(body.price)*Number(body.discount)/100);
     console.log(body.productname,body.price,body.discount,SellingPrice,body.qty,body.category)
     const product = new Products({
@@ -56,11 +65,20 @@ app.post('/file-upload',upload,async(request,response)=>{
         qty:Number(body.qty),
         category:body.category, 
         description:body.description,
-        ImageUrl:request.file.filename,
+        ImageUrl:cloudinary_image_link.secure_url,
         user_id:body.user_id
     })
     let result = await product.save()
-    response.send('done')
+
+    fs.unlink(request.file.path, (err) => { 
+        if(err){
+            console.log('---------->',err)
+        }
+        else { 
+          console.log("file deleted ------------>") 
+        } 
+      }); 
+    response.send(result)
 })
 
 app.get('/all-products',async(request,response)=>{
@@ -70,7 +88,7 @@ app.get('/all-products',async(request,response)=>{
 
 
 app.post('/customer-register',async (request,response)=>{
-    console.log(request.body)
+    // console.log(request.body)
     const data = new Users(request.body)
     let user =await data.save()
     if(user){
@@ -116,19 +134,21 @@ app.post('/seller-register',async (request,response)=>{
 app.post('/seller-login',async (request,response)=>{
     if(request.body.email && request.body.password){
         const user =await SellerUser.findOne(request.body).select(["-password","-is_created_Buyer_account","-is_seller"])
+        console.log('user ---------->',user)
         if(user){
             Jwt.sign({user},jwtkey,{expiresIn:"1h"},(err,token)=>{
                 if(err){
                     response.send({result:"something went wrong"})
-                }
-                    response.send({user,auth:token})  
+                }else{
+                    response.send({user,auth:token}) 
+                }         
             })  
         }else{
-            response.send({'has_account':false})
+            response.send({'result':'no account'})
         }
         
     }else{
-        response.send('credential not match')
+        response.send({'result':'All Fields are Mandatory'})
     }  
 })
 
@@ -148,7 +168,8 @@ app.post('/customer-login',async (request,response)=>{
     }  
 })
 
-app.post('/all-products-by-user/:user_id',VerifyToken,async (request,response)=>{
+app.post('/all-products-by-user/:user_id',async (request,response)=>{
+    console.log(request.params)
     const product = await Products.find(request.params)
     response.send(product)
 })
@@ -173,16 +194,16 @@ function VerifyToken(request,response,next){
         token = token.split(' ')[1]
         Jwt.verify(token,jwtkey,(err,valid)=>{
             if(err){
-                response.send('please login')
+                response.send('-1')
             }else{
                 next()
             }
         })
     }else{
-        response.send('please login first')
+        response.send('-1')
     }
 }
 
 app.listen(port,()=>{
-    console.log('app is running ...')
+    console.log('app is running ....')
 })
