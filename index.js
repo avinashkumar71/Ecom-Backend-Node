@@ -169,7 +169,6 @@ app.post('/customer-login',async (request,response)=>{
 })
 
 app.post('/all-products-by-user/:user_id',async (request,response)=>{
-    console.log(request.params)
     const product = await Products.find(request.params)
     response.send(product)
 })
@@ -205,5 +204,5 @@ function VerifyToken(request,response,next){
 }
 
 app.listen(port,()=>{
-    console.log('app is running ....')
+    console.log('app is running .....')
 })
