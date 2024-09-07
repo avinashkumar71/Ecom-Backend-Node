@@ -24,7 +24,7 @@ const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-const corsOrigin = ['https://ecommerce-m19c.onrender.com','http://localhost:3000'];
+const corsOrigin = 'https://ecommerce-m19c.onrender.com';
 app.use(cors({
   origin:[corsOrigin],
   methods:['GET','POST','DELETE','PUT'],
