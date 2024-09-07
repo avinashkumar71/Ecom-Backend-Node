@@ -7,6 +7,10 @@ const cloudinary = require('cloudinary')
 require('dotenv').config()
 const fs = require('fs');
 
+const Insta = require('instamojo-nodejs');
+Insta.setKeys(process.env.INSTA_API_KEY, process.env.INSTA_AUTH_KEY);
+Insta.isSandboxMode(true);
+
 const port = process.env.PORT
 const jwtkey = process.env.JWTKEY 
 
@@ -19,7 +23,8 @@ cloudinary.config({
 const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
-const corsOrigin = 'http://localhost:3000';
+
+const corsOrigin = ['http://localhost:3000'];
 app.use(cors({
   origin:[corsOrigin],
   methods:['GET','POST','DELETE','PUT'],
@@ -32,6 +37,8 @@ require('./database/config')
 const Users = require('./database/user')
 const Products = require('./database/product')
 const SellerUser = require('./database/seller_user');
+const Orders = require('./database/order')
+const OrderProducts = require('./database/orderProduct')
 const path = require('path');
 
 
@@ -72,10 +79,10 @@ app.post('/file-upload',upload,async(request,response)=>{
 
     fs.unlink(request.file.path, (err) => { 
         if(err){
-            console.log('---------->',err)
+            // console.log('---------->',err)
         }
         else { 
-          console.log("file deleted ------------>") 
+        //   console.log("file deleted ------------>") 
         } 
       }); 
     response.send(result)
@@ -98,7 +105,6 @@ app.post('/customer-register',async (request,response)=>{
             }else{
                 user = user.toObject()
                 delete user.password
-                delete user.phone
                 delete user.is_seller
                 response.send({user,auth:token}) 
             }         
@@ -134,7 +140,7 @@ app.post('/seller-register',async (request,response)=>{
 app.post('/seller-login',async (request,response)=>{
     if(request.body.email && request.body.password){
         const user =await SellerUser.findOne(request.body).select(["-password","-is_created_Buyer_account","-is_seller"])
-        console.log('user ---------->',user)
+        // console.log('user ---------->',user)
         if(user){
             Jwt.sign({user},jwtkey,{expiresIn:"1h"},(err,token)=>{
                 if(err){
@@ -179,12 +185,78 @@ app.delete('/delete-product/:_id',async(request,response)=>{
 })
 
 app.post('/update-product/:_id',upload,async(request,response)=>{
-    const data = JSON.parse(request.body.data) 
+    const data = JSON.parse(request.body.data)
+    // console.log('request file path',request.file)
+    if(request.file !== undefined){
+        const cloudinary_image_link =await cloudinary.uploader.upload(request.file.path)
+        // console.log('------>',cloudinary_image_link.secure_url)
+        data['ImageUrl'] = cloudinary_image_link.secure_url
+
+        fs.unlink(request.file.path, (err) => { 
+            if(err){
+                console.log('---------->',err)
+            }
+            else { 
+              console.log("file deleted ------------>") 
+            } 
+          }); 
+    }
+
     const SellingPrice =Math.floor(data.price - data.price*data['discount']/100);
     data['selling_price'] = SellingPrice
-    data['ImageUrl'] = request.file.filename
     const result = await Products.updateOne(request.params,{$set:data})
     response.send(result)
+})
+
+app.get('/get-update-product-details/:_id',async(request,response)=>{
+    const result = await Products.find(request.params)
+    response.send(result)
+})
+
+app.post('/pay',async(request,response)=>{
+        const body = request.body
+        const data = new Insta.PaymentData();
+
+        data.purpose = "Buying Products";
+        data.currency = 'INR'   
+        data.buyer_name = `${body.name}`
+        data.email = `${body.email}`  
+        data.phone = `${body.phone}`  
+        data.amount = `${body.amount}`
+        data.send_email = true              
+        data.setRedirectUrl('http://localhost:3000/sucess');
+
+        Insta.createPayment(data,async function(error, res) {
+        if (error) {
+            console.log(error)
+        } else {
+            const responseData = await JSON.parse(res)
+            
+            const OrderDetails = {
+                payment_request_id:responseData.payment_request.id,
+                user_id:body.user_id,
+                amount:body.amount,
+                payment_status:responseData.payment_request.status
+            }
+            const Order_Data = new Orders(OrderDetails);
+            await Order_Data.save()
+
+            const OrderProductDetails = {
+                payment_request_id:responseData.payment_request.id,
+                products:body.order_products
+            }
+
+            const order_products = new OrderProducts(OrderProductDetails)
+            await order_products.save()
+
+            response.send(responseData.payment_request) 
+        }
+        });
+})
+
+app.post('/success',async(request,response)=>{
+    const result = await Orders.updateOne({payment_request_id:request.body.payment_request_id},{$set:{payment_status:request.body.payment_status}})
+    response.send('done')
 })
 
 function VerifyToken(request,response,next){
