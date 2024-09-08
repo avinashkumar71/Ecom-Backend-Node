@@ -229,7 +229,7 @@ app.post('/pay',async(request,response)=>{
         data.phone = `${body.phone}`  
         data.amount = `${body.amount}`
         data.send_email = true              
-        data.setRedirectUrl('https://ecommerce-m19c.onrender.com/sucess');
+        data.setRedirectUrl('https://ecom-frontend-node.onrender.com/sucess');
 
         Insta.createPayment(data,async function(error, res) {
         if (error) {
