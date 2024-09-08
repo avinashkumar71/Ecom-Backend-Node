@@ -8,7 +8,7 @@ require('dotenv').config()
 const fs = require('fs');
 
 const Insta = require('instamojo-nodejs');
-Insta.setKeys(process.env.INSTA_API_KEY, process.env.INSTA_AUTH_KEY);
+Insta.setKeys(process.env.INSTA_API_KEY, process.env.INSTA_AUTH_KEY)
 Insta.isSandboxMode(true);
 
 const port = process.env.PORT
@@ -221,7 +221,7 @@ app.get('/get-update-product-details/:_id',async(request,response)=>{
 app.post('/pay',async(request,response)=>{
         const body = request.body
         const data = new Insta.PaymentData();
-
+        console.log('data coming from frontend------>',body)
         data.purpose = "Buying Products";
         data.currency = 'INR'   
         data.buyer_name = `${body.name}`
@@ -229,14 +229,14 @@ app.post('/pay',async(request,response)=>{
         data.phone = `${body.phone}`  
         data.amount = `${body.amount}`
         data.send_email = true              
-        data.setRedirectUrl('http://localhost:3000/sucess');
+        data.setRedirectUrl('https://ecommerce-m19c.onrender.com/sucess');
 
         Insta.createPayment(data,async function(error, res) {
         if (error) {
             console.log(error)
         } else {
             const responseData = await JSON.parse(res)
-            
+            console.log('responsedata-------->',responseData)
             const OrderDetails = {
                 payment_request_id:responseData.payment_request.id,
                 user_id:body.user_id,
@@ -248,7 +248,8 @@ app.post('/pay',async(request,response)=>{
 
             const OrderProductDetails = {
                 payment_request_id:responseData.payment_request.id,
-                products:body.order_products
+                products:body.order_products,
+                address:body.address
             }
 
             const order_products = new OrderProducts(OrderProductDetails)
