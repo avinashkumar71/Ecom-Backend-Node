@@ -24,12 +24,12 @@ const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  next();
-});
+// app.use((req, res, next) => {
+//   res.header('Access-Control-Allow-Origin', '*');
+//   next();
+// });
 
-const corsOrigin = 'http://localhost:3000';
+const corsOrigin = 'https://ecom-frontend-node.onrender.com';
 app.use(cors({
   origin:[corsOrigin],
   methods:['GET','POST','DELETE','PUT'],
@@ -228,9 +228,9 @@ app.post('/pay',async(request,response)=>{
         data.email = `${body.email}`  
         data.phone = `${body.phone}`  
         data.amount = `${body.amount}`
-        data.send_email = true              
+        data.send_email = true
+        // data.setRedirectUrl('http://localhost:3000/success');
         data.setRedirectUrl('https://ecom-frontend-node.onrender.com/success');
-
         Insta.createPayment(data,async function(error, res) {
         if (error) {
             console.log(error)
