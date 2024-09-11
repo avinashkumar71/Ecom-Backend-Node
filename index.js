@@ -29,8 +29,8 @@ app.use(bodyParser.json());
 //   next();
 // });
 
-// const corsOrigin = 'https://ecom-frontend-node.onrender.com';
-const corsOrigin = 'http://localhost:3000'
+const corsOrigin = 'https://ecom-frontend-node.onrender.com';
+// const corsOrigin = 'http://localhost:3000'
 app.use(cors({
   origin:[corsOrigin],
   methods:['GET','POST','DELETE','PUT'],
@@ -231,8 +231,8 @@ app.post('/pay',async(request,response)=>{
         data.phone = `${body.phone}`  
         data.amount = `${body.amount}`
         data.send_email = true
-        data.setRedirectUrl('http://localhost:3000/success');
-        // data.setRedirectUrl('https://ecom-frontend-node.onrender.com/success');
+        // data.setRedirectUrl('http://localhost:3000/success');
+        data.setRedirectUrl('https://ecom-frontend-node.onrender.com/success');
         Insta.createPayment(data,async function(error, res) {
         if (error) {
             console.log(error)
