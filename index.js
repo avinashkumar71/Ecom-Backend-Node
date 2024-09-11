@@ -29,7 +29,8 @@ app.use(bodyParser.json());
 //   next();
 // });
 
-const corsOrigin = 'https://ecom-frontend-node.onrender.com';
+// const corsOrigin = 'https://ecom-frontend-node.onrender.com';
+const corsOrigin = 'http://localhost:3000'
 app.use(cors({
   origin:[corsOrigin],
   methods:['GET','POST','DELETE','PUT'],
@@ -44,6 +45,7 @@ const Products = require('./database/product')
 const SellerUser = require('./database/seller_user');
 const Orders = require('./database/order')
 const OrderProducts = require('./database/orderProduct')
+const CODOrder = require('./database/CodOrder')
 const path = require('path');
 
 
@@ -229,8 +231,8 @@ app.post('/pay',async(request,response)=>{
         data.phone = `${body.phone}`  
         data.amount = `${body.amount}`
         data.send_email = true
-        // data.setRedirectUrl('http://localhost:3000/success');
-        data.setRedirectUrl('https://ecom-frontend-node.onrender.com/success');
+        data.setRedirectUrl('http://localhost:3000/success');
+        // data.setRedirectUrl('https://ecom-frontend-node.onrender.com/success');
         Insta.createPayment(data,async function(error, res) {
         if (error) {
             console.log(error)
@@ -241,23 +243,49 @@ app.post('/pay',async(request,response)=>{
                 payment_request_id:responseData.payment_request.id,
                 user_id:body.user_id,
                 amount:body.amount,
-                payment_status:responseData.payment_request.status
+                payment_status:responseData.payment_request.status,
+                products:body.order_products,
+                address:body.address,
+                payment_mode:body.payment_mode
             }
             const Order_Data = new Orders(OrderDetails);
             await Order_Data.save()
 
-            const OrderProductDetails = {
-                payment_request_id:responseData.payment_request.id,
-                products:body.order_products,
-                address:body.address
-            }
+            // const OrderProductDetails = {
+            //     payment_request_id:responseData.payment_request.id,
+            //     products:body.order_products,
+            //     address:body.address,
+            //     payment_mode:body.payment_mode
+            // }
 
-            const order_products = new OrderProducts(OrderProductDetails)
-            await order_products.save()
+            // const order_products = new OrderProducts(OrderProductDetails)
+            // await order_products.save()
 
             response.send(responseData.payment_request) 
         }
         });
+})
+
+app.post('/codorder',async(request,response)=>{
+    console.log('code backend fire ...')
+    console.log('cod -->',request.body)
+    const result = new CODOrder(request.body)
+    await result.save()
+    response.send('data saved')
+})
+
+app.post('/myorder',async(request,response)=>{
+    // console.log(request.body)
+    const result = await Orders.find(request.body)
+    // console.log('result',result)
+    response.send(result)
+})
+
+app.post('/my-cod-order',async(request,response)=>{
+    // console.log(request.body)
+    const result = await CODOrder.find(request.body)
+    // console.log('result',result)
+    response.send(result)
 })
 
 app.post('/success',async(request,response)=>{
