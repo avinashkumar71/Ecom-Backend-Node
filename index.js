@@ -55,10 +55,20 @@ const upload = multer({
             cb(null,'uploads')
         },
         filename:function(request,file,cb){
+            // console.log('inside multer ----->',file)
             cb(null,file.fieldname + "-" + Date.now() + ".jpg")
             
         }
-    })
+    }),
+    fileFilter:(req,file,cb)=>{
+        if(file.mimetype=='image/png' || file.mimetype=='image/jpg' || file.mimetype=='image/jpeg'){
+            cb(null,true)
+        }else{
+            cb(null,false)
+            console.log('this extension is not allowed')
+        }
+    },
+    limits:{fileSize:1*1024*1024}
 }).single("image")
 
 app.post('/file-upload',upload,async(request,response)=>{
@@ -193,10 +203,9 @@ app.delete('/delete-product/:_id',async(request,response)=>{
 
 app.post('/update-product/:_id',upload,async(request,response)=>{
     const data = JSON.parse(request.body.data)
-    // console.log('request file path',request.file)
     if(request.file !== undefined){
         const cloudinary_image_link =await cloudinary.uploader.upload(request.file.path)
-        // console.log('------>',cloudinary_image_link.secure_url)
+        console.log('------>',cloudinary_image_link.secure_url)
         data['ImageUrl'] = cloudinary_image_link.secure_url
 
         fs.unlink(request.file.path, (err) => { 
@@ -261,7 +270,7 @@ app.post('/pay',async(request,response)=>{
             // const order_products = new OrderProducts(OrderProductDetails)
             // await order_products.save()
 
-            response.send(responseData.payment_request) 
+            response.send(responseData.payment_request)
         }
         });
 })
