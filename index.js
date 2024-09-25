@@ -17,7 +17,7 @@ const jwtkey = process.env.JWTKEY
 cloudinary.config({ 
     cloud_name: process.env.CLOUD_NAME, 
     api_key: process.env.API_KEY, 
-    api_secret: process.env.API_SECRECT // Click 'View API Keys' above to copy your API secret
+    api_secret: process.env.API_SECRECT 
 })
 
 const bodyParser = require('body-parser');
@@ -46,6 +46,7 @@ const SellerUser = require('./database/seller_user');
 const Orders = require('./database/order')
 const OrderProducts = require('./database/orderProduct')
 const CODOrder = require('./database/CodOrder')
+const Category = require('./database/Category')
 const path = require('path');
 
 
@@ -65,7 +66,7 @@ const upload = multer({
             cb(null,true)
         }else{
             cb(null,false)
-            console.log('this extension is not allowed')
+            // console.log('this extension is not allowed')
         }
     },
     limits:{fileSize:1*1024*1024}
@@ -77,10 +78,10 @@ app.post('/file-upload',upload,async(request,response)=>{
     // console.log('--------->',request.file)
 
     const cloudinary_image_link =await cloudinary.uploader.upload(request.file.path)
-    console.log('------>',cloudinary_image_link.secure_url)
+    // console.log('------>',cloudinary_image_link.secure_url)
     
     const SellingPrice =Math.floor(Number(body.price) - Number(body.price)*Number(body.discount)/100);
-    console.log(body.productname,body.price,body.discount,SellingPrice,body.qty,body.category)
+    // console.log(body.productname,body.price,body.discount,SellingPrice,body.qty,body.category)
     const product = new Products({
         productname:body.productname,
         price:Number(body.price),
@@ -210,10 +211,10 @@ app.post('/update-product/:_id',upload,async(request,response)=>{
 
         fs.unlink(request.file.path, (err) => { 
             if(err){
-                console.log('---------->',err)
+                // console.log('---------->',err)
             }
             else { 
-              console.log("file deleted ------------>") 
+            //   console.log("file deleted ------------>") 
             } 
           }); 
     }
@@ -232,7 +233,7 @@ app.get('/get-update-product-details/:_id',async(request,response)=>{
 app.post('/pay',async(request,response)=>{
         const body = request.body
         const data = new Insta.PaymentData();
-        console.log('data coming from frontend------>',body)
+        // console.log('data coming from frontend------>',body)
         data.purpose = "Buying Products";
         data.currency = 'INR'   
         data.buyer_name = `${body.name}`
@@ -244,10 +245,10 @@ app.post('/pay',async(request,response)=>{
         data.setRedirectUrl('https://ecom-frontend-node.onrender.com/success');
         Insta.createPayment(data,async function(error, res) {
         if (error) {
-            console.log(error)
+            // console.log(error)
         } else {
             const responseData = await JSON.parse(res)
-            console.log('responsedata-------->',responseData)
+            // console.log('responsedata-------->',responseData)
             const OrderDetails = {
                 payment_request_id:responseData.payment_request.id,
                 user_id:body.user_id,
@@ -276,30 +277,60 @@ app.post('/pay',async(request,response)=>{
 })
 
 app.post('/codorder',async(request,response)=>{
-    console.log('code backend fire ...')
-    console.log('cod -->',request.body)
+    // console.log('code backend fire ...')
+    // console.log('cod -->',request.body)
     const result = new CODOrder(request.body)
     await result.save()
     response.send('data saved')
 })
 
 app.post('/myorder',async(request,response)=>{
-    // console.log(request.body)
-    const result = await Orders.find(request.body)
-    // console.log('result',result)
-    response.send(result)
+    // console.log('online ---->',request.body.user_id)
+    if(request.body.user_id!==undefined){
+        const result = await Orders.find(request.body)
+        // console.log('result--------->',result)
+        response.send(result)
+    }else{
+        response.send([])
+    }
+    
 })
 
 app.post('/my-cod-order',async(request,response)=>{
-    // console.log(request.body)
-    const result = await CODOrder.find(request.body)
-    // console.log('result',result)
-    response.send(result)
+    // console.log('cod ------->',request.body.user_id)
+    if(request.body.user_id!==undefined){
+        const result = await CODOrder.find(request.body)
+        // console.log('result--------->',result)
+        response.send(result)
+    }else{
+        response.send([])
+    }
 })
 
 app.post('/success',async(request,response)=>{
     const result = await Orders.updateOne({payment_request_id:request.body.payment_request_id},{$set:{payment_status:request.body.payment_status}})
     response.send('done')
+})
+
+// counter for pageview
+app.get("/get-data",(req,res)=>{
+    console.log('fired ...........')
+    fs.readFile('myData.txt', (err, data) => {
+        if (err) throw err;
+        // console.log('get data ------------->',data.toString(),typeof data);
+
+        fs.writeFile('myData.txt',`${Number(data) +1}`, function (err) {
+            if (err) throw err;
+            // console.log('Saved!');
+            res.send(`${Number(data)+1}`)
+            });
+      });
+})
+
+app.get("/get-category",async(request,response)=>{
+    const category = await Category.find()
+    // console.log('category---->',category)
+    response.send(category)
 })
 
 function VerifyToken(request,response,next){
